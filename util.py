@@ -131,7 +131,7 @@ def wait_heartbeat(mav, timeout=10):
     while time.time() < start_time+timeout:
         if mav.recv_match(type='HEARTBEAT', blocking=True, timeout=0.5) is not None:
             return
-    failure("Failed to get heartbeat")    
+    failure("Failed to get heartbeat")
 
 def safety_off(mav):
     '''turn off safety switch'''
@@ -182,7 +182,7 @@ class Tee(object):
             sys.stdout = self.stdout
         self.stdout = None
         self.file = None
-        
+
 
 
 def mkdir_p(dir):
@@ -203,3 +203,79 @@ def gyro_vector(raw_imu):
     return Vector3(degrees(raw_imu.xgyro*0.001),
                    degrees(raw_imu.ygyro*0.001),
                    degrees(raw_imu.zgyro*0.001))
+
+def emit_test_data_file(file_name, test_status, serial_number, customer, tester_name, test_process, assembly_number, assembly_revision, line, start_date, stop_date, non_required_list = {}):
+	'''creates a test data file'''
+	_fields = {
+		'message': ['>', 1000],
+		'serial': ['S', 50],
+		'customer': ['C', 18],
+		'board_style': ['B', 16],
+		'tester_name': ['M', 16],
+		'test_process': ['P', 8],
+		'fixture_slot': ['s', 4],
+		'fixture': ['f', 25],
+		'software_document': ['d', 16],
+		'software_revision': ['R', 3],
+		'assembly_number': ['n', 25],
+		'assembly_revision': ['r', 8],
+		'assembly_version': ['v', 20],
+		'firmware_revision': ['W', 25],
+		'test_status': ['T', 1],
+		'operator_id': ['O', 25],
+		'line': ['L', 16],
+		'site': ['p', 4],
+		'start_date': ['[', 19],
+		'stop_date': [']', 19],
+		'fail_label': ['F', 25],
+		'measure_label': ['M', 25],
+		'measure_data': ['d', 25],
+		'analysis_label': ['X', 25],
+		'repair_label': ['Y', 25],
+		'analysis_datetime': ['(', 8],
+		'defect': ['A', 30],
+		'defect_location': ['c', 25],
+		'analysis_by': ['b', 25],
+		'analysis_status': ['z', 1],
+		'defect_pin_count': ['Q', 4],
+		'defect_detail': ['a', 16],
+		'part_control_number': ['G', 25],
+		'machine_name': ['h', 30],
+		'feeder_number': ['e', 4],
+		'analysis_comment': ['m', 30],
+		'rework_action': ['E', 30],
+		'rework_datetime': [')', 8],
+		'extra_data_keyword': ['+', 25],
+		'rework_by': ['j', 25],
+		'rework_comment': ['y', 255],
+		'rework_status': ['w', 1],
+		'rework_flag': ['t', 1],
+		'analysis_confirm_date': ['u', 8],
+	}
+
+	''' pads and trims field values according to spec '''
+	_to_char = lambda field_name, string: "%s%s" % (_fields[field_name][0], str(string)[:_fields[field_name][1]])
+
+	output_fields = [_to_char('serial', serial_number),
+					_to_char('customer', customer),
+					_to_char('tester_name', tester_name),
+					_to_char('test_process', test_process),
+					_to_char('assembly_number', assembly_number),
+					_to_char('assembly_version', assembly_revision),
+					_to_char('line', line),
+					_to_char('start_date', start_date),
+					_to_char('stop_date', stop_date)]
+
+	for key, value in non_required_list.iteritems():
+		output_fields.append(_to_char(key, value))
+
+	if test_status:
+		output_fields.append('TP')
+		output_fields.append(_to_char('message', '-PASS'))
+	else:
+		output_fields.append('TF')
+		output_fields.append(_to_char('message', '-FAIL'))
+
+	output =  "%s\r\n" % ("\r\n".join([str(x) for x in (output_fields)]))
+	file = open(file_name, 'w+')
+	return file.write(output)
